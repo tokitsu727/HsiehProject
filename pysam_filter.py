@@ -1,28 +1,38 @@
 from pysam import VariantFile
-from collection import Counter
-import vcf, sys
+import pysam.bcftools
+from collections import Counter
+import vcf, sys, pysam
 
 af_filter_level = .1
 
-def hard_filter(ifile, ofile):
-    filter_str = "MIN(FMT/GQ) >= 99 && MIN(FMT/DP) > 10"
-    pysam.bcftools.filter("-O", "v", "-o", ofile, "-i", filter_str, ifile)
+def hard_filter(ifile, ofile, filter_str):
+    pysam.bcftools.filter("-O", "v", "-o", ofile, "-i", filter_str, ifile, catch_stdout=False)
 
 def double_genotype(f_record):
     #TODO: Check this one liner
-    return Counter(getattr(sample, 'GT') for sample in f_record.samples).values().count(2) == 0
+    #return Counter(for sample in f_record.samples).values().count(2) == 0
+    gt = []
+    for sample in f_record.samples:
+        if sample['GT'] in gt:
+            return 0
+        if sample['GT'] == './.':
+            return 0
+        gt.append(sample['GT'])
+    return 1
 
 def af_filter(f_record):
     for sample in f_record.samples:
         if sample['DP'] and sample['AD'][1]/sample['DP'] < af_filter_level:
             return 0
+    return 1
 
 def double_filter(f_record):
-    return double_genotype and af_filter
+    return double_genotype(f_record) and af_filter(f_record)
 
 def filter_str_builder(gq, dp):
     #TODO: Make this more expandable
     filter_str = "MIN(FMT/GQ) >= {0} && MIN(FMT/DP) > {1}".format(gq, dp)
+    print(filter_str)
     return filter_str
 
 def custom_filters(ifile, ofile):
@@ -30,17 +40,22 @@ def custom_filters(ifile, ofile):
     #    and then use itertools filter to filter them
     #Albeit, perhaps this should've just been using the pyvcf filter tool anyways.
     #TODO: Test performance of this
+    #TODO: This is backwards.
+    #   Also, some issues. We are running into the end of the list while iterating. Ideas to fix:
+    #   Maybe something is wrong with what is getting passed to filter functions.
+    #   Maybe issue with filter functions. Either way, filtered_vcf is coming back broken.
     vcf_reader = vcf.Reader(filename=ifile)
     #Is an iterator
     filtered_vcf = filter(double_filter, vcf_reader)
-    reader_template = vcf.Reader(filename='format.vcf')
+    reader_template = vcf.Reader(filename='out.vcf')
     vcf_writer = vcf.Writer(open(ofile, 'w'), reader_template)
     i = 0
     for record in filtered_vcf:
         vcf_writer.write_record(record)
-        if i == 50:
+        if i == 1:
             vcf_writer.flush()
             i=0
+            break
         i += 1
     vcf_writer.close()
     
@@ -72,8 +87,8 @@ def match_positions(input_vcf1, input_vcf2):
             matching_num+=1
 
     matching_data = {
-        percent_1 = matching_num/len(pos_mem_1)
-        percent_2 = matching_num/len(pos_mem_2)
+        "percent_1":  matching_num/len(pos_mem_1),
+        "percent_2":  matching_num/len(pos_mem_2)
     }
 
     f.close()
@@ -82,6 +97,7 @@ def match_positions(input_vcf1, input_vcf2):
 if __name__ == '__main__':
     ifile = sys.argv[1] # Input file in vcf zipped
     ofile = sys.argv[2] # Output file in vcf unzipped format
+    ofile = "out.vcf"
     matchfile = sys.argv[3] # File of called data to match 
 
     hard_filter(ifile, ofile, filter_str_builder(99, 10))
