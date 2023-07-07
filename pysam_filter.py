@@ -25,11 +25,25 @@ def filter_str_builder(gq, dp):
     filter_str = "MIN(FMT/GQ) >= {0} && MIN(FMT/DP) > {1}".format(gq, dp)
     return filter_str
 
-#def custom_filters(ifile, ofile):
+def custom_filters(ifile, ofile):
     #We use pyvcf to get an iterable for the file
     #    and then use itertools filter to filter them
     #Albeit, perhaps this should've just been using the pyvcf filter tool anyways.
     #TODO: Test performance of this
+    vcf_reader = vcf.Reader(filename=ifile)
+    #Is an iterator
+    filtered_vcf = filter(double_filter, vcf_reader)
+    reader_template = vcf.Reader(filename='format.vcf')
+    vcf_writer = vcf.Writer(open(ofile, 'w'), reader_template)
+    i = 0
+    for record in filtered_vcf:
+        vcf_writer.write_record(record)
+        if i == 50:
+            vcf_writer.flush()
+            i=0
+        i += 1
+    vcf_writer.close()
+    
 
 def match_positions(input_vcf1, input_vcf2):
     #TODO: Find better way to do this so that we can retreive record information
@@ -66,11 +80,12 @@ def match_positions(input_vcf1, input_vcf2):
     return matching_data
 
 if __name__ == '__main__':
-    ifile = sys.argv[1] # Input file in vcf unzipped
+    ifile = sys.argv[1] # Input file in vcf zipped
     ofile = sys.argv[2] # Output file in vcf unzipped format
     matchfile = sys.argv[3] # File of called data to match 
 
     hard_filter(ifile, ofile, filter_str_builder(99, 10))
+    custom_filters(ofile, ofile)
     matching_data = match_positions(ofile, matchfile)
 
 
