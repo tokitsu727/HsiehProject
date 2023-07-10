@@ -5,11 +5,14 @@ import vcf, sys, pysam
 
 af_filter_level = .1
 
+#TODO: Can I make this more pythony?
+
 def hard_filter(ifile, ofile, filter_str):
     pysam.bcftools.filter("-O", "v", "-o", ofile, "-i", filter_str, ifile, catch_stdout=False)
 
 def double_genotype(f_record):
     #TODO: Check this one liner
+    #Probably not worth it, this is pretty fast anyways.
     #return Counter(for sample in f_record.samples).values().count(2) == 0
     gt = []
     for sample in f_record.samples:
@@ -56,7 +59,6 @@ def custom_filters(ifile, ofile):
             i=0
         i += 1
     vcf_writer.close()
-    
 
 def match_positions(input_vcf1, input_vcf2):
     #TODO: Find better way to do this so that we can retreive record information
@@ -93,21 +95,12 @@ def match_positions(input_vcf1, input_vcf2):
     return matching_data
 
 if __name__ == '__main__':
+    #This is full pipeline. Takes about 5-10 minutes
     ifile = sys.argv[1] # Input file in vcf zipped
     ofile = sys.argv[2] # Output file in vcf unzipped format
     matchfile = sys.argv[3] # File of called data to match 
 
-    hard_filter(ifile, ofile, filter_str_builder(40, 10))
+    hard_filter(ifile, ofile, filter_str_builder(90, 10))
     custom_filters(ofile, 'out1.vcf')
     matching_data = match_positions('out1.vcf', matchfile)
-    print("Match \%1: {0}\nMatch \%2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
-
-
-
-
-
-
-
-
-
-
+    print("Match %1: {0}\nMatch %2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
