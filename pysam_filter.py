@@ -69,13 +69,13 @@ def match_positions(input_vcf1, input_vcf2):
     vcf_reader_1=vcf.Reader(filename=input_vcf1)
     vcf_reader_2=vcf.Reader(filename=input_vcf2)
 
-    pos_mem_1 = {}
-    pos_mem_2 = {} 
 
-    for record in vcf_reader_1:
-        pos_mem_1[record.POS] = record
+    print("Begin matching.")
+
+    pos_mem_2 = []
+
     for record in vcf_reader_2:
-        pos_mem_2[record.POS] = record
+        pos_mem_2.append(record.POS)
 
     reader_template = vcf.Reader(filename=input_vcf1)
     #TODO: More automatic filenaming
@@ -86,27 +86,36 @@ def match_positions(input_vcf1, input_vcf2):
     #TODO: Better solution for these flushes
     i = 0
     j = 0
-    for key in pos_mem_1:
-        if key in pos_mem_2:
-            vcf_writer.write_record(pos_mem_1[key])
+
+    print("Writing...")
+
+    pos_mem_1 = 0
+
+    for record in vcf_reader_1:
+        pos_mem_1 += 1
+        if record.POS in pos_mem_2:
+            vcf_writer.write_record(record)
             if i == 500:
                 vcf_writer.flush()
                 i = 0
             i += 1
             matching_num+=1
         else:
-            vcf_writer2.write_record(pos_mem_1[key])
+            vcf_writer2.write_record(record)
             if j == 500:
                 vcf_writer2.flush()
                 j = 0
             j += 1
     vcf_writer.close()
+    vcf_writer2.close()
+    #TODO This isn't super helpful, at least for the second file, probably need to be checking
+    #        stuff based on relative sizes of the files to contextualize the matching %.
+    #        AKA normalize idiot       
     matching_data = {
-        "percent_1":  matching_num/len(pos_mem_1),
+        "percent_1":  matching_num/pos_mem_1,
         "percent_2":  matching_num/len(pos_mem_2)
     }
 
-    f.close()
     return matching_data
 
 if __name__ == '__main__':
@@ -115,7 +124,7 @@ if __name__ == '__main__':
     ofile = sys.argv[2] # Output file in vcf unzipped format
     matchfile = sys.argv[3] # File of called data to match 
 
-    hard_filter(ifile, ofile, filter_str_builder(90, 10))
+    hard_filter(ifile, ofile, filter_str_builder(90, 15))
     custom_filters(ofile, 'out1.vcf')
     matching_data = match_positions('out1.vcf', matchfile)
     print("Match %1: {0}\nMatch %2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
