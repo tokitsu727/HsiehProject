@@ -69,23 +69,38 @@ def match_positions(input_vcf1, input_vcf2):
     vcf_reader_1=vcf.Reader(filename=input_vcf1)
     vcf_reader_2=vcf.Reader(filename=input_vcf2)
 
-    pos_mem_1 = []
-    pos_mem_2 = []
+    pos_mem_1 = {}
+    pos_mem_2 = {} 
 
     for record in vcf_reader_1:
-        pos_mem_1.append(record.POS)
+        pos_mem_1[record.POS] = record
     for record in vcf_reader_2:
-        pos_mem_2.append(record.POS)
+        pos_mem_2[record.POS] = record
 
+    reader_template = vcf.Reader(filename=input_vcf1)
+    #TODO: More automatic filenaming
+    vcf_writer = vcf.Writer(open('matching_file.vcf', 'w'), reader_template)
+    vcf_writer2 = vcf.Writer(open('unmatching_file.vcf', 'w'), reader_template)
     pos_mem_2 = set(pos_mem_2)
-    f = open('matching_file', 'w')
     matching_num = 0
-
-    for item in pos_mem_1:
-        if item in pos_mem_2:
-            f.write(str(item)+'\n')
+    #TODO: Better solution for these flushes
+    i = 0
+    j = 0
+    for key in pos_mem_1:
+        if key in pos_mem_2:
+            vcf_writer.write_record(pos_mem_1[key])
+            if i == 500:
+                vcf_writer.flush()
+                i = 0
+            i += 1
             matching_num+=1
-
+        else:
+            vcf_writer2.write_record(pos_mem_1[key])
+            if j == 500:
+                vcf_writer2.flush()
+                j = 0
+            j += 1
+    vcf_writer.close()
     matching_data = {
         "percent_1":  matching_num/len(pos_mem_1),
         "percent_2":  matching_num/len(pos_mem_2)
