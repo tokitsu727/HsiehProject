@@ -75,7 +75,8 @@ def match_positions(input_vcf1, input_vcf2):
     pos_mem_2 = []
 
     for record in vcf_reader_2:
-        pos_mem_2.append(record.POS)
+        if record.FILTER == "PASS":
+            pos_mem_2.append(record.POS)
 
     reader_template = vcf.Reader(filename=input_vcf1)
     #TODO: More automatic filenaming
@@ -124,7 +125,7 @@ if __name__ == '__main__':
     ofile = sys.argv[2] # Output file in vcf unzipped format
     matchfile = sys.argv[3] # File of called data to match 
 
-    hard_filter(ifile, ofile, filter_str_builder(90, 15))
+    hard_filter(ifile, ofile, filter_str_builder(99, 15))
     custom_filters(ofile, 'out1.vcf')
     matching_data = match_positions('out1.vcf', matchfile)
     print("Match %1: {0}\nMatch %2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
