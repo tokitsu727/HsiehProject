@@ -3,7 +3,7 @@
 ##source=HaplotypeCaller
 ##bcftools_filterVersion=1.17 (pysam)+htslib-1.17
 ##bcftools_filterCommand=filter -O v -o out.vcf -i 'MIN(FMT/GQ) >= 99 && MIN(FMT/DP) > 15' KUNUSCCLH_0001_01_LibTube81_R00250S8A2M0000P0000_C1_KHWGSH_A00006-KUNUSCCLH_0001_01_LibTube11_R00250S8A2M0000P0000_T2_KHWGSH_A00002.HC_All.vcf.gz; Date=Thu Jul 20 11:00:11 2023
-##bcftools_filterCommand=filter -O v -o out1.vcf -i 'MIN(FMT/GQ) >= 99 && MIN(FMT/DP) > 15' out.vcf; Date=Thu Jul 20 11:23:02 2023
+##bcftools_filterCommand=filter -O v -o out1.vcf -i 'MIN(FMT/GQ) >= 99 && MIN(FMT/DP) > 15' out.vcf; Date=Thu Jul 20 11:42:31 2023
 ##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">
 ##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">
