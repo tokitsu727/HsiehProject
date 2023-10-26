@@ -62,7 +62,7 @@ def custom_filters(ifile, ofile):
         i += 1
     vcf_writer.close()
 
-def match_positions(input_vcf1, input_vcf2, write_out):
+def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     #TODO: Find better way to do this so that we can retreive record information
     #   Probably relatively difficult to do, depending on complexity of search vcf file
     #   This current method is O(n) based on the size of input_vcf_1
@@ -78,14 +78,16 @@ def match_positions(input_vcf1, input_vcf2, write_out):
     pos_mem_2 = []
 
     for record in vcf_reader_2:
-        pos_mem_2.append(record.POS)
+        if record.FILTER == []:
+            pos_mem_2.append(record.POS)
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
-    #TODO: More automatic filenaming
+    matching_file = 'merged_files/matching' + outfile
+    unmatching_file = 'merged_files/unmatching' + outfile
     if write_out:
-        vcf_writer = vcf.Writer(open('matching_file.vcf', 'w'), reader_template)
-        vcf_writer2 = vcf.Writer(open('unmatching_file.vcf', 'w'), reader_template)
+        vcf_writer = vcf.Writer(open(matching_file, 'w'), reader_template)
+        vcf_writer2 = vcf.Writer(open(unmatching_file, 'w'), reader_template)
     pos_mem_2 = set(pos_mem_2)
     matching_num = 0
     #TODO: Better solution for these flushes?
@@ -100,7 +102,7 @@ def match_positions(input_vcf1, input_vcf2, write_out):
 
     for record in vcf_reader_1:
         pos_mem_1 += 1
-        if record.POS in pos_mem_2:
+        if record.POS in pos_mem_2 and record.FILTER == []:
             if write_out:
                 vcf_writer.write_record(record)
                 if i == 500:
@@ -127,14 +129,8 @@ def match_positions(input_vcf1, input_vcf2, write_out):
     }
 
     return matching_data
-
 def default_mode(input_file, output_file, matching_file):
-    if output_file is not None:
-            custom_filters(input_file, output_file)
-            hard_filter(output_file, "out1.vcf", filter_str_builder(99, 15))
-    else:
-        hard_filter(input_file, "out1.vcf", filter_str_builder(99, 15))
-    matching_data = match_positions('out1.vcf', matching_file, True)
+    matching_data = match_positions(input_file, matching_file, output_file, True)
     print("Match %1: {0}\nMatch %2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
 
 def graph_mode(input_file, output_file, matching_file):
@@ -180,8 +176,8 @@ if __name__ == '__main__':
     input_file = args.input_file
     output_file = args.output_file
     matching_file = args.matching_file
+    print(output_file)
+    print(matching_file)
+    print(input_file)
     
-    if args.make_graph is None: 
-        default_mode(input_file, output_file, matching_file)
-    else:
-        graph_mode(input_file, output_file, matching_file)
+    default_mode(input_file, output_file, matching_file)
