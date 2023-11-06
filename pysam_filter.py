@@ -78,13 +78,13 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     pos_mem_2 = []
 
     for record in vcf_reader_2:
-        if record.FILTER == []:
+        if record.FILTER == [] and record.POS not in pos_mem_2:
             pos_mem_2.append(record.POS)
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
-    matching_file = 'merged_files/matching' + outfile
-    unmatching_file = 'merged_files/unmatching' + outfile
+    matching_file = 'merged_files_noSnp_renamed/matching/' + outfile
+    unmatching_file = 'merged_files_noSnp_renamed/unmatching/' + outfile
     if write_out:
         vcf_writer = vcf.Writer(open(matching_file, 'w'), reader_template)
         vcf_writer2 = vcf.Writer(open(unmatching_file, 'w'), reader_template)

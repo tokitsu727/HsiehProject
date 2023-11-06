@@ -1,8 +1,8 @@
 #/bin/bash
 
-cd 0001/renamed_vcfs
-#FILES='../../Collaborate/KUNUSCCLH_00*/analysis/*snpEff*vcf'
-FILES='/media/go/wgsAnalysis/KUNUSCCLH_00*/analysis/*snpEff*vcf'
+cd renamed_vcfs
+#FILES='../../Collaborate/KUNUSCCLH_00*/analysis/*vcf'
+FILES='/media/go/wgsAnalysis/KUNUSCCLH_00*/analysis/*vcf'
 
 for FILE in $FILES;
 do
