@@ -78,13 +78,13 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     pos_mem_2 = []
 
     for record in vcf_reader_2:
-        if (record.FILTER == [] or record.FILTER == ["HighDepth"]) and record.POS not in pos_mem_2:
+        if record.FILTER == [] and record.POS not in pos_mem_2:
             pos_mem_2.append(record.POS)
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
-    matching_file = 'merged_files/strelka/matching/' + outfile
-    unmatching_file = 'merged_files/strelka/unmatching/' + outfile
+    matching_file = 'merged_files_noSnp_renamed/matching/' + outfile
+    unmatching_file = 'merged_files_noSnp_renamed/unmatching/' + outfile
     if write_out:
         vcf_writer = vcf.Writer(open(matching_file, 'w'), reader_template)
         vcf_writer2 = vcf.Writer(open(unmatching_file, 'w'), reader_template)
@@ -165,19 +165,10 @@ def graph_mode(input_file, output_file, matching_file):
        
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+	input_vcf1 = sys.argv[1]
+	vcf_reader_1=vcf.Reader(filename=input_vcf1)
+	for record in vcf_reader_1:
+		if record.FILTER == ["HighDepth"]:
+			print(record.POS)
+	
 
-    parser.add_argument("-i", "--input_file", help="Input File")
-    parser.add_argument("-o", "--output_file", help="Intermediary output file") #Set this flag only if you need to do the same type haplo filter again
-    parser.add_argument("-m", "--matching_file", help="File to compare to")
-    parser.add_argument("-g", "--make_graph", action="store_true", help="Run with a variety of gq and dp values.")
-
-    args = parser.parse_args()
-    input_file = args.input_file
-    output_file = args.output_file
-    matching_file = args.matching_file
-    print(output_file)
-    print(matching_file)
-    print(input_file)
-    
-    default_mode(input_file, output_file, matching_file)
