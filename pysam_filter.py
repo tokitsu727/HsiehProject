@@ -83,8 +83,8 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
-    matching_file = 'merged_files/strelka/matching/' + outfile
-    unmatching_file = 'merged_files/strelka/unmatching/' + outfile
+    matching_file = 'merged_files_strelka/matching/' + outfile
+    unmatching_file = 'merged_files_strelka/unmatching/' + outfile
     if write_out:
         vcf_writer = vcf.Writer(open(matching_file, 'w'), reader_template)
         vcf_writer2 = vcf.Writer(open(unmatching_file, 'w'), reader_template)
@@ -102,7 +102,7 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
 
     for record in vcf_reader_1:
         pos_mem_1 += 1
-        if record.POS in pos_mem_2 and record.FILTER == []:
+        if record.POS in pos_mem_2 and (record.FILTER == [] or record.FILTER ==["HighDepth"]):
             if write_out:
                 vcf_writer.write_record(record)
                 if i == 500:
