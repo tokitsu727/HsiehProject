@@ -1,0 +1,20 @@
+KUNUSCCLH_0001_01_LibTube81_R00250S8A2M0000P0000_C1_KHWGSH_A00006-KUNUSCCLH_0001_01_LibTube01_R00250S8A2M0000P0000_T1_KHWGSH_A00001
+/data3/ZarkoFiles/VcfConverter/crypt_test/dragen_hardfilter/vcf_files/01C1_01T1.hard-filtered.vcf
+KUNUSCCLH_0001_01_LibTube81_R00250S8A2M0000P0000_C1_KHWGSH_A00006-KUNUSCCLH_0001_01_LibTube01_R00250S8A2M0000P0000_T1_KHWGSH_A00001.Dragen_StrelkaSnvs.vcf
+/media/go/wgsAnalysis/KgpOut_Echo/KUNUSCCLH_0001/analysis/KUNUSCCLH_0001_01_LibTube81_R00250S8A2M0000P0000_C1_KHWGSH_A00006-KUNUSCCLH_0001_01_LibTube01_R00250S8A2M0000P0000_T1_KHWGSH_A00001.strelka.passed.somatic.snvs.vcf
+/data3/ZarkoFiles/VcfConverter/crypt_test/dragen_hardfilter/vcf_files/01C1_01T1.hard-filtered.vcf
+Begin matching.
+Reading File 2
+6145
+Reading File 1
+Match %1: 0.7525412431261457
+Match %2: 0.734906427990236
+KUNUSCCLH_0001_01_LibTube81_R00250S8A2M0000P0000_C1_KHWGSH_A00006-KUNUSCCLH_0001_01_LibTube01_R00250S8A2M0000P0000_T1_KHWGSH_A00001.Dragen_StrelkaIndels.vcf
+/media/go/wgsAnalysis/KgpOut_Echo/KUNUSCCLH_0001/analysis/KUNUSCCLH_0001_01_LibTube81_R00250S8A2M0000P0000_C1_KHWGSH_A00006-KUNUSCCLH_0001_01_LibTube01_R00250S8A2M0000P0000_T1_KHWGSH_A00001.strelka.passed.somatic.snvs.vcf
+/data3/ZarkoFiles/VcfConverter/crypt_test/dragen_hardfilter/vcf_files/01C1_01T1.hard-filtered.vcf
+Begin matching.
+Reading File 2
+6145
+Reading File 1
+Match %1: 0.7525412431261457
+Match %2: 0.734906427990236

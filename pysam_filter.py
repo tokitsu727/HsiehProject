@@ -62,7 +62,7 @@ def custom_filters(ifile, ofile):
         i += 1
     vcf_writer.close()
 
-def match_positions(input_vcf1, input_vcf2, outfile, write_out):
+def match_positions(input_vcf1, input_vcf2, outfile, out_dir, write_out):
     #TODO: Find better way to do this so that we can retreive record information
     #   Probably relatively difficult to do, depending on complexity of search vcf file
     #   This current method is O(n) based on the size of input_vcf_1
@@ -83,8 +83,8 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
-    matching_file = 'merged_files_strelka/matching/' + outfile
-    unmatching_file = 'merged_files_strelka/unmatching/' + outfile
+    matching_file = out_dir + '/matching/' + outfile
+    unmatching_file = out_dir + '/unmatching/' + outfile
     if write_out:
         vcf_writer = vcf.Writer(open(matching_file, 'w'), reader_template)
         vcf_writer2 = vcf.Writer(open(unmatching_file, 'w'), reader_template)
@@ -129,8 +129,8 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     }
 
     return matching_data
-def default_mode(input_file, output_file, matching_file):
-    matching_data = match_positions(input_file, matching_file, output_file, True)
+def default_mode(input_file, output_file, matching_file, out_dir):
+    matching_data = match_positions(input_file, matching_file, output_file, out_dir, True)
     print("Match %1: {0}\nMatch %2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
 
 def graph_mode(input_file, output_file, matching_file):
@@ -171,13 +171,15 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output_file", help="Intermediary output file") #Set this flag only if you need to do the same type haplo filter again
     parser.add_argument("-m", "--matching_file", help="File to compare to")
     parser.add_argument("-g", "--make_graph", action="store_true", help="Run with a variety of gq and dp values.")
+    parser.add_argument("-d", "--output_directory", help="Directory to put files")
 
     args = parser.parse_args()
     input_file = args.input_file
     output_file = args.output_file
     matching_file = args.matching_file
+    out_dir = args.output_directory
     print(output_file)
     print(matching_file)
     print(input_file)
     
-    default_mode(input_file, output_file, matching_file)
+    default_mode(input_file, output_file, matching_file, out_dir)

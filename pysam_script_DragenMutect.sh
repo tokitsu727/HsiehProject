@@ -7,12 +7,16 @@ do
 	do
 		PREFIX=${FILE%%.*}
 		NOPATH="${PREFIX##*/}"
+		[[ $NOPATH =~ (.*)(\_T[0-9])(.*) ]]
+		TUBE=${BASH_REMATCH[2]}
 		echo $NOPATH
+		TUBE=${TUBE#_}
+		DRAGEN=/data3/ZarkoFiles/VcfConverter/crypt_test/dragen_hardfilter/vcf_files/${i}C1_${i}${TUBE}.hard-filtered.vcf
+		echo $DRAGEN
 		FILE_MUTECT="${PREFIX}_MuTect_All_Filtered.vcf"
 		FILE_SNVS="${PREFIX}.strelka.passed.somatic.snvs.vcf"
 		FILE_INDELS="${PREFIX}.strelka.passed.somatic.indels.vcf"
-		python3 pysam_filter.py -i $FILE_SNVS -m $FILE_MUTECT -o "${NOPATH}.MuTect_Strelka-snvs.vcf" &
-		python3 pysam_filter.py -i $FILE_INDELS -m $FILE_MUTECT -o "${NOPATH}.MuTect_Strelka-indels.vcf" &
+		python3 pysam_filter.py -i $DRAGEN -m $FILE_MUTECT -o "${NOPATH}.Dragen_MuTect.vcf" -d "merged_files_Dragen_MuTect" &
 	done
 	wait
 			
