@@ -4,6 +4,9 @@ from collections import Counter
 import vcf, sys, pysam
 import argparse
 import matplotlib.pyplot as plt 
+import random
+import numpy as np
+import pandas as pd
 
 af_filter_level = .1
 
@@ -79,7 +82,7 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
 
     for record in vcf_reader_2:
         if (record.FILTER == [] or record.FILTER == ["HighDepth"]) and record.POS not in pos_mem_2:
-            pos_mem_2.append((record.POS,record.CHROM))
+            pos_mem_2.append([record.POS,record.CHROM])
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
@@ -133,51 +136,70 @@ def default_mode(input_file, output_file, matching_file):
     matching_data = match_positions(input_file, matching_file, output_file, True)
     print("Match %1: {0}\nMatch %2: {1}".format(matching_data['percent_1'], matching_data['percent_2']))
 
-def graph_mode(input_file, output_file, matching_file):
-    match1 = []
-    match2 = []
-    for gq in range(0, 99):
-        hard_filter(input_file, "out1.vcf", filter_str_builder(gq, 15))
-        matching_data = match_positions("out1.vcf", matching_file, False)
-        match1.append(matching_data['percent_1'])
-        match2.append(matching_data['percent_2'])
-    plt.figure(0)
-    plt.xlabel("GQ Threshold")
-    plt.title("Matching % of two files by GQ")
-    plt.plot(match1, 'g', label = 'Haplotype')
-    plt.plot(match2, 'r', label = 'MuTect')
-    plt.savefig("gqaf.pdf")
+def compute_bins(data, bin_size):
+    min_val = np.min(data)
+    max_val = np.max(data)
+    min_bound = -1.0 * (min_val % bin_size - min_val)
+    max_bound = max_val - max_val % bin_size + bin_size
+    n_bins = int((max_bound - min_bound) / bin_size) + 1
+    bins = np.linspace(min_bound, max_bound, n_bins)
+    return bins
 
-    match1 = []
-    match2 = []
+def calculate_af(t_alt, t_depth):
+    return t_alt/t_depth
 
-    for dp in range(0, 99):
-        hard_filter(input_file, "out1.vcf", filter_str_builder(99, dp))
-        matching_data = match_positions("out1.vcf", matching_file, False)
-        match1.append(matching_data['percent_1'])
-        match2.append(matching_data['percent_2'])
-    plt.figure(1)
-    plt.xlabel("DP Threshold")
-    plt.title("Matching % of two files by DP")
-    plt.plot(match1, 'g', label = 'Haplotype')
-    plt.plot(match2, 'r', label = 'MuTect')
-    plt.savefig("dpaf.pdf")
-       
+def create_list(input_file):
+    AF = []
+
+    df = pd.read_csv(input_file, header=1, sep='\t')
+    chrX = df.loc[df['Chromosome']=='chrX']
+    AF = chrX.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth']), axis=1).tolist()
+    return AF
+
+
+def graph_mode(input_file, output_file):
+    AF = create_list(input_file)# + create_list(input_file2)
+
+    bins=compute_bins(AF, 0.01)
+
+    plt.xlabel("AF")
+    plt.figure(figsize=(20,6))
+    plt.title(output_file)
+    plt.hist(AF, bins=bins, edgecolor="white", zorder=2)
+    plt.xticks(bins, rotation=70)
+    plt.savefig("graphs/"+output_file+".pdf")
+
+def merge_csvs(input_file1, input_file2, output_file):
+    on_list = ['Chromosome', 'Start_Position']
+    df1 = pd.read_csv(input_file1, header=1, sep='\t')
+    df2 = pd.read_csv(input_file2, header=1, sep='\t')
+
+    merged_df = df1.merge(df2, how='right', on=on_list)
+
+    merged_df.to_csv(output_file, sep='\t', index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-i", "--input_file", help="Input File")
+    #parser.add_argument("-j", "--input_file_graph", help="Temporary Input File for graphing")
     parser.add_argument("-o", "--output_file", help="Intermediary output file") #Set this flag only if you need to do the same type haplo filter again
     parser.add_argument("-m", "--matching_file", help="File to compare to")
     parser.add_argument("-g", "--make_graph", action="store_true", help="Run with a variety of gq and dp values.")
+    parser.add_argument("-c", "--merge_csv", action="store_true", help="Run with csvs instead of vcf")
 
     args = parser.parse_args()
     input_file = args.input_file
     output_file = args.output_file
     matching_file = args.matching_file
-    print(output_file)
-    print(matching_file)
-    print(input_file)
+    merge_csv = args.merge_csv
+    #input_file_graph = args.input_file_graph
+
+    #if True:
+    #    graph_mode(input_file, output_file)
+    #    exit()
+    if merge_csv:
+        merge_csvs(input_file, matching_file, output_file)
+        exit()
     
-    default_mode(input_file, output_file, matching_file)
+    default_mode(input_file, matching_file)
