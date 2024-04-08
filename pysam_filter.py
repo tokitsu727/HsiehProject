@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import pandas as pd
+import os.path
 
 af_filter_level = .1
 
@@ -145,15 +146,22 @@ def compute_bins(data, bin_size):
     bins = np.linspace(min_bound, max_bound, n_bins)
     return bins
 
-def calculate_af(t_alt, t_depth):
-    return t_alt/t_depth
+def calculate_af(t_alt, t_depth, reflect_graph):
+    if not reflect_graph:
+        return t_alt/t_depth
+    AF = t_alt/t_depth
+    if AF == 0 or AF == 1:
+        return 1
+    if AF > .5:
+        return 1 - AF
+    return AF
 
-def create_list(input_file):
+def create_list(input_file, reflect_graph):
     AF = []
 
     df = pd.read_csv(input_file, header=1, sep='\t')
-    chrX = df.loc[df['Chromosome']=='chrX']
-    AF = chrX.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth']), axis=1).tolist()
+    chrX = df.loc[df['Chromosome']=='chr1'] #Modify this line to change which chromosome is plotted
+    AF = chrX.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
     return AF
 
 
@@ -169,14 +177,63 @@ def graph_mode(input_file, output_file):
     plt.xticks(bins, rotation=70)
     plt.savefig("graphs/"+output_file+".pdf")
 
+def bulk_graph_mode(input_files, output_file, reflect_graph):
+
+    bins = [x * .01 for x in range(0,101)]
+    #Next two lines for non dragen
+    format2 = False
+    if input_files[0].find("KUNUSCCLH") != -1:
+        format2 = True
+    if format2: 
+        dict_input = {x:x[x.find("_T")+2] for x in input_files}
+
+        input_files = sorted(dict_input.keys(), key=dict_input.get)
+    
+    fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
+    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    number = 0
+    for i in input_files:
+        AF = create_list(i, reflect_graph)
+        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        j = i.find("_T")
+        #axs[number].set_title(i[2:4])
+        if format2:
+            j = i.find("_T")
+            axs[number].set_title(i[j+1:j+3])
+        else:
+            j = i.find("PASS")
+            axs[number].set_title(i[j-14:j-12])
+
+        axs[number].set_xlabel("AF")
+        axs[number].set_xticks(bins)
+        axs[number].tick_params(labelrotation=70)
+        
+        number += 1
+
+    plt.subplots_adjust(hspace=.2)
+    plt.savefig("graphs/"+output_file+".pdf")
+
+
+
 def merge_csvs(input_file1, input_file2, output_file):
     on_list = ['Chromosome', 'Start_Position']
     df1 = pd.read_csv(input_file1, header=1, sep='\t')
     df2 = pd.read_csv(input_file2, header=1, sep='\t')
 
-    merged_df = df1.merge(df2, how='right', on=on_list)
+    df1_len = len(df1)
+    df2_len = len(df2)
+
+    df1['Start_Position'] = df1.Start_Position.astype(str, errors='raise')
+    df2['Start_Position'] = df2.Start_Position.astype(str, errors='raise')
+
+    merged_df = pd.merge(df1, df2, how='inner', on=on_list, suffixes = ["_Dragen","_MuTect"])
+    merged_df.drop_duplicates(subset=on_list, keep='first')
+
+    combined_len = len(merged_df) 
 
     merged_df.to_csv(output_file, sep='\t', index=False)
+
+    print(f'{output_file},{df1_len},{df2_len},{combined_len}')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -187,12 +244,16 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--matching_file", help="File to compare to")
     parser.add_argument("-g", "--make_graph", action="store_true", help="Run with a variety of gq and dp values.")
     parser.add_argument("-c", "--merge_csv", action="store_true", help="Run with csvs instead of vcf")
+    parser.add_argument("--bulk_graph", nargs="*",type=str)
+    parser.add_argument("--reflect_graph", action="store_true")
 
     args = parser.parse_args()
     input_file = args.input_file
     output_file = args.output_file
     matching_file = args.matching_file
     merge_csv = args.merge_csv
+    bulk_graph = args.bulk_graph
+    reflect_graph = args.reflect_graph
     #input_file_graph = args.input_file_graph
 
     #if True:
@@ -201,5 +262,8 @@ if __name__ == '__main__':
     if merge_csv:
         merge_csvs(input_file, matching_file, output_file)
         exit()
+    if bulk_graph:
+        bulk_graph_mode(bulk_graph, output_file, reflect_graph)
+        exit()
     
-    default_mode(input_file, matching_file)
+    default_mode(input_file, output_file, matching_file)
