@@ -156,16 +156,16 @@ def calculate_af(t_alt, t_depth, reflect_graph):
         return 1 - AF
     return AF
 
-def create_list(input_file, reflect_graph):
-    AF = []
+def create_list(input_file, reflect_graph, chr_n):
+    af = []
 
     df = pd.read_csv(input_file, header=1, sep='\t')
-    chrX = df.loc[df['Chromosome']=='chr1'] #Modify this line to change which chromosome is plotted
-    AF = chrX.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
-    return AF
+    chrx = df.loc[df['Chromosome']==chr_n] #modify this line to change which chromosome is plotted
+    af = chrx.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
+    return af
 
 
-def graph_mode(input_file, output_file):
+def graph_mode(input_file, output_file, chr_n):
     AF = create_list(input_file)# + create_list(input_file2)
 
     bins=compute_bins(AF, 0.01)
@@ -176,8 +176,7 @@ def graph_mode(input_file, output_file):
     plt.hist(AF, bins=bins, edgecolor="white", zorder=2)
     plt.xticks(bins, rotation=70)
     plt.savefig("graphs/"+output_file+".pdf")
-
-def bulk_graph_mode(input_files, output_file, reflect_graph):
+def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
 
     bins = [x * .01 for x in range(0,101)]
     #Next two lines for non dragen
@@ -193,7 +192,47 @@ def bulk_graph_mode(input_files, output_file, reflect_graph):
     fig.suptitle(output_file, size='xx-large', fontweight='heavy')
     number = 0
     for i in input_files:
-        AF = create_list(i, reflect_graph)
+        AF = create_list(i, reflect_graph, chr_n)
+        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        j = i.find("_T")
+        #axs[number].set_title(i[2:4])
+        if format2:
+            j = i.find("_T")
+            axs[number].set_title(i[j+1:j+3] + " " + chr_n)
+        else:
+            j = i.find("PASS")
+            axs[number].set_title(i[j-14:j-12] + " " + chr_n)
+
+        axs[number].set_xlabel("AF")
+        axs[number].set_xticks(bins)
+        axs[number].tick_params(labelrotation=70)
+        
+        number += 1
+
+    plt.subplots_adjust(hspace=.2)
+    plt.savefig("graphs/"+output_file+'.'+chr_n+".pdf")
+
+def one_graph_mode(input_files, output_file, reflect_graph):
+
+    bins = [x * .01 for x in range(0,101)]
+    #Next two lines for non dragen
+    format2 = False
+    if input_files[0].find("KUNUSCCLH") != -1:
+        format2 = True
+    if format2: 
+        dict_input = {x:x[x.find("_T")+2] for x in input_files}
+
+        input_files = sorted(dict_input.keys(), key=dict_input.get)
+    
+    fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
+    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    number = 0
+    for i in input_files:
+        AF = create_list(i, reflect_graph, 'chr'+str(1))
+        for chr_n in range(2,23):
+            print(str(len(AF)))
+            AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
+            
         axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
         j = i.find("_T")
         #axs[number].set_title(i[2:4])
@@ -246,6 +285,7 @@ if __name__ == '__main__':
     parser.add_argument("-c", "--merge_csv", action="store_true", help="Run with csvs instead of vcf")
     parser.add_argument("--bulk_graph", nargs="*",type=str)
     parser.add_argument("--reflect_graph", action="store_true")
+    parser.add_argument("--one_graph", action="store_true")
 
     args = parser.parse_args()
     input_file = args.input_file
@@ -254,6 +294,7 @@ if __name__ == '__main__':
     merge_csv = args.merge_csv
     bulk_graph = args.bulk_graph
     reflect_graph = args.reflect_graph
+    one_graph = args.one_graph
     #input_file_graph = args.input_file_graph
 
     #if True:
@@ -262,8 +303,13 @@ if __name__ == '__main__':
     if merge_csv:
         merge_csvs(input_file, matching_file, output_file)
         exit()
-    if bulk_graph:
-        bulk_graph_mode(bulk_graph, output_file, reflect_graph)
+    if one_graph:
+        one_graph_mode(bulk_graph, output_file, reflect_graph) 
         exit()
+    if bulk_graph:
+        for i in range(1, 27):
+            bulk_graph_mode(bulk_graph, output_file, reflect_graph, 'chr'+str(i))
+        exit()
+            
     
     default_mode(input_file, output_file, matching_file)
