@@ -161,8 +161,12 @@ def create_list(input_file, reflect_graph, chr_n):
 
     df = pd.read_csv(input_file, header=1, sep='\t')
     chrx = df.loc[df['Chromosome']==chr_n] #modify this line to change which chromosome is plotted
-    af = chrx.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
-    return af
+    try:
+        af = chrx.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
+        return af
+    except:
+        print("No values found at" + chr_n + ", returning 0")
+        return [0]
 
 
 def graph_mode(input_file, output_file, chr_n):
@@ -252,7 +256,37 @@ def one_graph_mode(input_files, output_file, reflect_graph):
     plt.subplots_adjust(hspace=.2)
     plt.savefig("graphs/"+output_file+".pdf")
 
+def create_by_pos(input_file, chr_n):
+    data = {}
+    df = pd.read_csv(input_file, header=1, sep='\t')
+    chrx = df.loc[df['Chromosome']==chr_n]
+    try:
+        data['AF'] = chrx.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], False), axis=1).tolist()
+        data['pos'] = chrx['Start_Position']
+        return data
+    except:
+        return {}
+        
 
+def AF_by_pos(input_file, output_file):
+    chrs = list(range(1,23)) + ['X','Y']
+    data = {}
+    fig, axs =plt.subplots(24, figsize=(20,200), sharey=True)
+    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    number = 0
+    for i in chrs:
+        AF = create_list(input_file, False, 'chr'+str(i))
+        data = create_by_pos(input_file, 'chr'+str(i))
+        if data:
+            axs[number].scatter(data['pos'], data['AF'])
+            axs[number].set_title('chr'+str(i))
+            axs[number].set_xlabel("Start Position")
+            axs[number].set_ylabel("AF")
+            number += 1
+    plt.savefig("graphs/"+output_file+".pdf")
+
+
+    
 
 def merge_csvs(input_file1, input_file2, output_file):
     on_list = ['Chromosome', 'Start_Position']
@@ -286,6 +320,7 @@ if __name__ == '__main__':
     parser.add_argument("--bulk_graph", nargs="*",type=str)
     parser.add_argument("--reflect_graph", action="store_true")
     parser.add_argument("--one_graph", action="store_true")
+    parser.add_argument("--by_pos", action="store_true")
 
     args = parser.parse_args()
     input_file = args.input_file
@@ -295,6 +330,7 @@ if __name__ == '__main__':
     bulk_graph = args.bulk_graph
     reflect_graph = args.reflect_graph
     one_graph = args.one_graph
+    by_pos = args.by_pos
     #input_file_graph = args.input_file_graph
 
     #if True:
@@ -305,6 +341,9 @@ if __name__ == '__main__':
         exit()
     if one_graph:
         one_graph_mode(bulk_graph, output_file, reflect_graph) 
+        exit()
+    if by_pos:
+        AF_by_pos(input_file, output_file)
         exit()
     if bulk_graph:
         for i in range(1, 27):
