@@ -1,6 +1,7 @@
 from pysam import VariantFile
 import pysam.bcftools
 from collections import Counter
+from statistics import median
 import vcf, sys, pysam
 import argparse
 import matplotlib.pyplot as plt 
@@ -156,11 +157,18 @@ def calculate_af(t_alt, t_depth, reflect_graph):
         return 1 - AF
     return AF
 
-def create_list(input_file, reflect_graph, chr_n):
+def create_list(input_file, reflect_graph, chr_n=False, chr_numbered=False):
     af = []
 
     df = pd.read_csv(input_file, header=1, sep='\t')
-    chrx = df.loc[df['Chromosome']==chr_n] #modify this line to change which chromosome is plotted
+    if chr_numbered:
+        mask = df['Chromosome'].str.contains('^chr\d+$', regex=True)
+        df = df.loc[mask]
+        
+    if chr_n: 
+        chrx = df.loc[df['Chromosome']==chr_n] #modify this line to change which chromosome is plotted
+    else:
+        chrx = df
     try:
         af = chrx.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
         return af
@@ -180,6 +188,8 @@ def graph_mode(input_file, output_file, chr_n):
     plt.hist(AF, bins=bins, edgecolor="white", zorder=2)
     plt.xticks(bins, rotation=70)
     plt.savefig("graphs/"+output_file+".pdf")
+
+
 def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
 
     bins = [x * .01 for x in range(0,101)]
@@ -234,8 +244,8 @@ def one_graph_mode(input_files, output_file, reflect_graph):
     for i in input_files:
         AF = create_list(i, reflect_graph, 'chr'+str(1))
         for chr_n in range(2,23):
-            print(str(len(AF)))
             AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
+
             
         axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
         j = i.find("_T")
@@ -243,10 +253,16 @@ def one_graph_mode(input_files, output_file, reflect_graph):
         if format2:
             j = i.find("_T")
             axs[number].set_title(i[j+1:j+3])
+            t = i[j+1:j+3]
+            s_i = i.find("_00")
+            s = i[s_i+1:s_i+5]
         else:
             j = i.find("PASS")
             axs[number].set_title(i[j-14:j-12])
+            t = i[j-14:j-12]
+            s = i[j-16:j-14]
 
+        print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
         axs[number].set_xlabel("AF")
         axs[number].set_xticks(bins)
         axs[number].tick_params(labelrotation=70)
@@ -321,6 +337,7 @@ if __name__ == '__main__':
     parser.add_argument("--reflect_graph", action="store_true")
     parser.add_argument("--one_graph", action="store_true")
     parser.add_argument("--by_pos", action="store_true")
+    parser.add_argument("--output_medians", action="store_true")
 
     args = parser.parse_args()
     input_file = args.input_file
@@ -331,6 +348,7 @@ if __name__ == '__main__':
     reflect_graph = args.reflect_graph
     one_graph = args.one_graph
     by_pos = args.by_pos
+    output_medians = args.output_medians
     #input_file_graph = args.input_file_graph
 
     #if True:
@@ -349,6 +367,7 @@ if __name__ == '__main__':
         for i in range(1, 27):
             bulk_graph_mode(bulk_graph, output_file, reflect_graph, 'chr'+str(i))
         exit()
+
             
     
     default_mode(input_file, output_file, matching_file)
