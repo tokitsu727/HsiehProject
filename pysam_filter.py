@@ -88,12 +88,12 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
     print(str(len(pos_mem_2)))
 
     reader_template = vcf.Reader(filename=input_vcf1)
-    matching_file = 'merged_files_strelka/matching/' + outfile
-    unmatching_file = 'merged_files_strelka/unmatching/' + outfile
+    matching_file = '/home/go/Documents/TimothyOkitsu/scratch/merged_files_strelka/matching/' + outfile
+    unmatching_file = '/home/go/Documents/TimothyOkitsu/scratch/merged_files_strelka/unmatching/' + outfile
     if write_out:
         vcf_writer = vcf.Writer(open(matching_file, 'w'), reader_template)
         vcf_writer2 = vcf.Writer(open(unmatching_file, 'w'), reader_template)
-    pos_mem_2 = set(pos_mem_2)
+    #pos_mem_2 = set(pos_mem_2)
     matching_num = 0
     #TODO: Better solution for these flushes?
     i = 0
@@ -107,7 +107,7 @@ def match_positions(input_vcf1, input_vcf2, outfile, write_out):
 
     for record in vcf_reader_1:
         pos_mem_1 += 1
-        if (record.POS, record.CHROM) in pos_mem_2 and (record.FILTER == [] or record.FILTER ==["HighDepth"]):
+        if ([record.POS, record.CHROM]) in pos_mem_2 and (record.FILTER == [] or record.FILTER ==["HighDepth"]):
             if write_out:
                 vcf_writer.write_record(record)
                 if i == 500:
@@ -148,9 +148,13 @@ def compute_bins(data, bin_size):
     return bins
 
 def calculate_af(t_alt, t_depth, reflect_graph):
+    if t_depth < 15:
+        print("removed")
+        return None
     if not reflect_graph:
         return t_alt/t_depth
     AF = t_alt/t_depth
+    print(str(t_depth))
     if AF == 0 or AF == 1:
         return 1
     if AF > .5:
@@ -171,6 +175,7 @@ def create_list(input_file, reflect_graph, chr_n=False, chr_numbered=False):
         chrx = df
     try:
         af = chrx.apply(lambda x: calculate_af(x['t_alt_count'], x['t_depth'], reflect_graph), axis=1).tolist()
+        #af.dropna()
         return af
     except:
         print("No values found at" + chr_n + ", returning 0")
@@ -231,9 +236,9 @@ def one_graph_mode(input_files, output_file, reflect_graph):
     bins = [x * .01 for x in range(0,101)]
     #Next two lines for non dragen
     format2 = False
-    if input_files[0].find("KUNUSCCLH") != -1:
+    if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
         format2 = True
-    if format2: 
+    if format2:  #Determine using dragen format
         dict_input = {x:x[x.find("_T")+2] for x in input_files}
 
         input_files = sorted(dict_input.keys(), key=dict_input.get)
@@ -241,15 +246,16 @@ def one_graph_mode(input_files, output_file, reflect_graph):
     fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
     fig.suptitle(output_file, size='xx-large', fontweight='heavy')
     number = 0
+
     for i in input_files:
         AF = create_list(i, reflect_graph, 'chr'+str(1))
+        #Add all graphs for all chromosomes together
         for chr_n in range(2,23):
             AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
 
             
         axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
         j = i.find("_T")
-        #axs[number].set_title(i[2:4])
         if format2:
             j = i.find("_T")
             axs[number].set_title(i[j+1:j+3])
