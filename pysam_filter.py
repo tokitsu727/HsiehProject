@@ -185,16 +185,22 @@ def create_list(input_file, reflect_graph, chr_n=False, chr_numbered=False):
         print("No values found at" + chr_n + ", returning 0")
         return [0]
 
-def t1_c1_ratio_list(input_file):
+def create_tcratio_list(input_file, chr_numbered=False):
     tcratio = []
+    pos = []
+
 
     df = pd.read_csv(input_file, header=1, sep='t')
+    if chr_numbered:
+        mask = df['Chromosome'].str.contains('^chr\d+$', regex=True)
+        df = df.loc[mask]
     try:
-        tcratio = chrx.apply(lambda x: x['t_depth']/x['n_depth'], axis=1).tolist()
-        return tcratio
+        tcratio = df.apply(lambda x: x['t_depth']/x['n_depth'], axis=1).tolist()
+        tcratio = df['Start_Position']
+        return [tcratio, pos]
     except:
         print("Exception occurred")
-        return [0]
+        return [[0],[0]]
 
 
 def graph_mode(input_file, output_file, chr_n):
@@ -252,7 +258,8 @@ def one_graph_mode(input_files, output_file, reflect_graph):
     format2 = False
     if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
         format2 = True
-    if format2:  #Determine using dragen format
+    if format2:  #Determine using non-dragen format
+        #Required to ensure proper sorting
         dict_input = {x:x[x.find("_T")+2] for x in input_files}
 
         input_files = sorted(dict_input.keys(), key=dict_input.get)
@@ -299,12 +306,11 @@ def one_graph_mode(input_files, output_file, reflect_graph):
 
 def tcratio_graph_mode(input_files, output_file, reflect_graph):
     #Creates a graph of numbered chromosomes
-    bins = [x * .01 for x in range(0,101)]
     #Next two lines for non dragen
     format2 = False
     if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
         format2 = True
-    if format2:  #Determine using dragen format
+    if format2:  #Determine using non-dragen format
         dict_input = {x:x[x.find("_T")+2] for x in input_files}
 
         input_files = sorted(dict_input.keys(), key=dict_input.get)
@@ -314,13 +320,13 @@ def tcratio_graph_mode(input_files, output_file, reflect_graph):
     number = 0
 
     for i in input_files:
-        AF = create_list(i, reflect_graph, 'chr'+str(1))
-        #Add all graphs for all chromosomes together
-        for chr_n in range(2,23):
-            AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
+        tcratio_obj = create_tcratio_list(i, chr_numbered=False)
+        tcratio = tcratio_obj[0]
+        pos = tcratio_obj[1]
 
             
         axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        axs[number].scatter(tcratio, pos)
         j = i.find("T")
         if format2:
             j = i.find("T")
@@ -346,7 +352,7 @@ def tcratio_graph_mode(input_files, output_file, reflect_graph):
         number += 1
 
     plt.subplots_adjust(hspace=.2)
-    plt.savefig("graphs/"+output_file+".pdf")
+    plt.savefig("graphs/"+output_file+"freebayes_filtered.pdf")
 
 def alternate_graph_mode(input_files, output_file):
     reflect_graph = False
@@ -491,6 +497,7 @@ if __name__ == '__main__':
     parser.add_argument("--by_pos", action="store_true")
     parser.add_argument("--output_medians", action="store_true")
     parser.add_argument("--alt_graph", action="store_true")
+    parser.add_argument("--freebayes_exp", action="store_true")
 
     args = parser.parse_args()
     input_file = args.input_file
@@ -503,6 +510,7 @@ if __name__ == '__main__':
     by_pos = args.by_pos
     output_medians = args.output_medians
     alt_graph = args.alt_graph
+    freebayes_exp = args.freebayes_exp
     #input_file_graph = args.input_file_graph
 
     #if True:
@@ -516,6 +524,9 @@ if __name__ == '__main__':
         exit()
     if by_pos:
         AF_by_pos(input_file, output_file)
+        exit()
+    if freebayes_exp:
+        tcratio_graph_mode(bulk_graph, output_file, False)
         exit()
     if alt_graph:
         print("Alternate experiment")
