@@ -149,7 +149,7 @@ def compute_bins(data, bin_size):
 
 def calculate_af(t_alt, t_depth, reflect_graph):
     if t_depth < 15:
-        print("removed")
+        #print("removed")
         return None
     if not reflect_graph:
         return t_alt/t_depth
@@ -160,6 +160,10 @@ def calculate_af(t_alt, t_depth, reflect_graph):
     if AF > .5:
         return 1 - AF
     return AF
+
+def calculate_tcratio(t_depth, n_depth):
+    return t_depth/n_depth
+
 
 def create_list(input_file, reflect_graph, chr_n=False, chr_numbered=False):
     af = []
@@ -181,6 +185,17 @@ def create_list(input_file, reflect_graph, chr_n=False, chr_numbered=False):
         print("No values found at" + chr_n + ", returning 0")
         return [0]
 
+def t1_c1_ratio_list(input_file):
+    tcratio = []
+
+    df = pd.read_csv(input_file, header=1, sep='t')
+    try:
+        tcratio = chrx.apply(lambda x: x['t_depth']/x['n_depth'], axis=1).tolist()
+        return tcratio
+    except:
+        print("Exception occurred")
+        return [0]
+
 
 def graph_mode(input_file, output_file, chr_n):
     AF = create_list(input_file)# + create_list(input_file2)
@@ -196,7 +211,7 @@ def graph_mode(input_file, output_file, chr_n):
 
 
 def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
-
+    #Creates a graph of each chr for each input file
     bins = [x * .01 for x in range(0,101)]
     #Next two lines for non dragen
     format2 = False
@@ -224,15 +239,14 @@ def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
 
         axs[number].set_xlabel("AF")
         axs[number].set_xticks(bins)
-        axs[number].tick_params(labelrotation=70)
-        
+        axs[number].tick_params(labelrotation=70, labelbottom=True)
         number += 1
 
     plt.subplots_adjust(hspace=.2)
     plt.savefig("graphs/"+output_file+'.'+chr_n+".pdf")
 
 def one_graph_mode(input_files, output_file, reflect_graph):
-
+    #Creates a graph of numbered chromosomes
     bins = [x * .01 for x in range(0,101)]
     #Next two lines for non dragen
     format2 = False
@@ -255,18 +269,22 @@ def one_graph_mode(input_files, output_file, reflect_graph):
 
             
         axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
-        j = i.find("_T")
+        j = i.find("T")
         if format2:
-            j = i.find("_T")
+            j = i.find("T")
             axs[number].set_title(i[j+1:j+3])
             t = i[j+1:j+3]
             s_i = i.find("_00")
             s = i[s_i+1:s_i+5]
         else:
-            j = i.find("PASS")
-            axs[number].set_title(i[j-14:j-12])
-            t = i[j-14:j-12]
-            s = i[j-16:j-14]
+            #j = i.find("PASS")
+            #axs[number].set_title(i[j-14:j-12])
+            #t = i[j-14:j-12]
+            #s = i[j-16:j-14]
+            j = i.find(".hard-filtered")
+            t = i[j-2:j]
+            s = i[j-4:j-2]
+            axs[number].set_title(t)
 
         print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
         axs[number].set_xlabel("AF")
@@ -277,6 +295,134 @@ def one_graph_mode(input_files, output_file, reflect_graph):
 
     plt.subplots_adjust(hspace=.2)
     plt.savefig("graphs/"+output_file+".pdf")
+
+
+def tcratio_graph_mode(input_files, output_file, reflect_graph):
+    #Creates a graph of numbered chromosomes
+    bins = [x * .01 for x in range(0,101)]
+    #Next two lines for non dragen
+    format2 = False
+    if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
+        format2 = True
+    if format2:  #Determine using dragen format
+        dict_input = {x:x[x.find("_T")+2] for x in input_files}
+
+        input_files = sorted(dict_input.keys(), key=dict_input.get)
+    
+    fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
+    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    number = 0
+
+    for i in input_files:
+        AF = create_list(i, reflect_graph, 'chr'+str(1))
+        #Add all graphs for all chromosomes together
+        for chr_n in range(2,23):
+            AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
+
+            
+        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        j = i.find("T")
+        if format2:
+            j = i.find("T")
+            axs[number].set_title(i[j+1:j+3])
+            t = i[j+1:j+3]
+            s_i = i.find("_00")
+            s = i[s_i+1:s_i+5]
+        else:
+            #j = i.find("PASS")
+            #axs[number].set_title(i[j-14:j-12])
+            #t = i[j-14:j-12]
+            #s = i[j-16:j-14]
+            j = i.find(".hard-filtered")
+            t = i[j-2:j]
+            s = i[j-4:j-2]
+            axs[number].set_title(t)
+
+        print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
+        axs[number].set_xlabel("AF")
+        axs[number].set_xticks(bins)
+        axs[number].tick_params(labelrotation=70)
+        
+        number += 1
+
+    plt.subplots_adjust(hspace=.2)
+    plt.savefig("graphs/"+output_file+".pdf")
+
+def alternate_graph_mode(input_files, output_file):
+    reflect_graph = False
+    bins = [x * .02 for x in range(0,51)]
+    #Next two lines for non dragen
+    format2 = False
+    if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
+        format2 = True
+    if format2:  #Determine using dragen format
+        dict_input = {x:x[x.find("_T")+2] for x in input_files}
+
+        input_files = sorted(dict_input.keys(), key=dict_input.get)
+    
+    fig, axs = plt.subplots(len(input_files*10),figsize=(20,90), sharex=True, sharey=True)
+    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    fig.subplots_adjust(top=0.8)
+    number = 0
+    
+    AF_dict = dict()
+    title = dict()
+    for i in range(len(input_files)):
+        AF = create_list(input_files[i], reflect_graph, 'chr'+str(1))
+        #Add all graphs for all chromosomes together
+        for chr_n in range(2,23):
+            AF.extend(create_list(input_files[i], reflect_graph, 'chr'+str(chr_n)))
+        AF_dict[i] = AF
+        
+
+        k = input_files[i]    
+        j = k.find("_T")
+        if format2:
+            j = k.find("_T")
+            #axs[number].set_title(i[j+1:j+3])`
+            title[i] = k[j+1:j+3]
+            t = k[j+1:j+3]
+            s_i = k.find("_00")
+            s = k[s_i+1:s_i+5]
+        else:
+            j = k.find("PASS")
+            #axs[number].set_title(i[j-14:j-12])
+            title[i] = k[j-14:j-12]
+            t = k[j-14:j-12]
+            s = k[j-16:j-14]
+    for i in range(1,10):
+        i_scalar = i/10
+        i_inv = (10-i)/10 
+        AF = [x * i_scalar for x in AF_dict[0]]
+        AF.extend([x * i_inv for x in AF_dict[1]])
+        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        #Titling, make sure to include i scalar and which is which.
+        axs[number].set_title("Ex1 " + title[0] + "*" + str(i_scalar) + " " + title[1] + "*" + str(i_inv))
+
+
+        #print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
+        axs[number].set_xlabel("AF")
+        axs[number].set_xticks(bins)
+        axs[number].tick_params(labelrotation=70)
+        axs[number].xaxis.set_tick_params(labelbottom=True)
+
+        AF_modified = [x * i_scalar if x <= 0.4 else x for x in AF_dict[0]]
+        AF_modified.extend([x * i_inv if x <= 0.4 else x for x in AF_dict[1]])
+        axs[number+10].hist(AF_modified, bins=bins, edgecolor="white", zorder=2)
+        axs[number+10].set_title("Ex2 " + title[0] + "*" + str(i_scalar) + " " + title[1] + "*" + str(i_inv) + " if AF<= 0.4")
+        
+        axs[number+10].set_xlabel("AF")
+        axs[number+10].set_xticks(bins)
+        axs[number+10].tick_params(labelrotation=70)
+        axs[number+10].xaxis.set_tick_params(labelbottom=True)
+        number += 1
+
+    plt.subplots_adjust(hspace=.2)
+    plt.tight_layout()
+    plt.savefig("graphs/"+output_file+".pdf")
+    plt.close()
+
+
 
 def create_by_pos(input_file, chr_n):
     data = {}
@@ -344,6 +490,7 @@ if __name__ == '__main__':
     parser.add_argument("--one_graph", action="store_true")
     parser.add_argument("--by_pos", action="store_true")
     parser.add_argument("--output_medians", action="store_true")
+    parser.add_argument("--alt_graph", action="store_true")
 
     args = parser.parse_args()
     input_file = args.input_file
@@ -355,6 +502,7 @@ if __name__ == '__main__':
     one_graph = args.one_graph
     by_pos = args.by_pos
     output_medians = args.output_medians
+    alt_graph = args.alt_graph
     #input_file_graph = args.input_file_graph
 
     #if True:
@@ -369,11 +517,14 @@ if __name__ == '__main__':
     if by_pos:
         AF_by_pos(input_file, output_file)
         exit()
+    if alt_graph:
+        print("Alternate experiment")
+        alternate_graph_mode(bulk_graph, output_file)
+        exit()
     if bulk_graph:
         for i in range(1, 27):
             bulk_graph_mode(bulk_graph, output_file, reflect_graph, 'chr'+str(i))
         exit()
-
             
     
     default_mode(input_file, output_file, matching_file)
