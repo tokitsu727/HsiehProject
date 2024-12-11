@@ -9,6 +9,8 @@ import random
 import numpy as np
 import pandas as pd
 import os.path
+import csv
+import re, sys
 
 af_filter_level = .1
 
@@ -148,9 +150,8 @@ def compute_bins(data, bin_size):
     return bins
 
 def calculate_af(t_alt, t_depth, reflect_graph):
-    if t_depth < 15:
-        #print("removed")
-        return None
+    if t_alt <= 15 or t_depth <= 15:
+        return 0 
     if not reflect_graph:
         return t_alt/t_depth
     AF = t_alt/t_depth
@@ -185,22 +186,28 @@ def create_list(input_file, reflect_graph, chr_n=False, chr_numbered=False):
         print("No values found at" + chr_n + ", returning 0")
         return [0]
 
-def create_tcratio_list(input_file, chr_numbered=False):
+def create_tcratio_list(input_file, chr_n=False, chr_numbered=False):
     tcratio = []
     pos = []
 
 
-    df = pd.read_csv(input_file, header=1, sep='t')
+    df = pd.read_csv(input_file, header=1, sep='\t')
     if chr_numbered:
         mask = df['Chromosome'].str.contains('^chr\d+$', regex=True)
         df = df.loc[mask]
+    if chr_n:
+        df = df.loc[df['Chromosome']==chr_n]
+        print(df)
     try:
-        tcratio = df.apply(lambda x: x['t_depth']/x['n_depth'], axis=1).tolist()
-        tcratio = df['Start_Position']
-        return [tcratio, pos]
-    except:
-        print("Exception occurred")
-        return [[0],[0]]
+        tcratio = df.apply(lambda x: x['t_depth']/x['n_depth'], axis=1)
+        print(tcratio)
+        print(chr_n)
+        tcratio = tcratio.tolist()
+        pos = df['Start_Position']
+        return [tcratio, pos, df['Chromosome']]
+    except Exception as e:
+        print(e)
+        return [[1],[1], [0]]
 
 
 def graph_mode(input_file, output_file, chr_n):
@@ -213,13 +220,14 @@ def graph_mode(input_file, output_file, chr_n):
     plt.title(output_file)
     plt.hist(AF, bins=bins, edgecolor="white", zorder=2)
     plt.xticks(bins, rotation=70)
-    plt.savefig("graphs/"+output_file+".pdf")
+    plt.savefig("graphs/"+output_file+".png")
 
 
 def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
     #Creates a graph of each chr for each input file
     bins = [x * .01 for x in range(0,101)]
     #Next two lines for non dragen
+    o = output_file.split('/')[-1]
     format2 = False
     if input_files[0].find("KUNUSCCLH") != -1:
         format2 = True
@@ -229,7 +237,7 @@ def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
         input_files = sorted(dict_input.keys(), key=dict_input.get)
     
     fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
-    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    fig.suptitle(o, size='xx-large', fontweight='heavy')
     number = 0
     for i in input_files:
         AF = create_list(i, reflect_graph, chr_n)
@@ -249,11 +257,11 @@ def bulk_graph_mode(input_files, output_file, reflect_graph, chr_n):
         number += 1
 
     plt.subplots_adjust(hspace=.2)
-    plt.savefig("graphs/"+output_file+'.'+chr_n+".pdf")
+    plt.savefig("graphs/"+o+'.'+chr_n+".png")
 
 def one_graph_mode(input_files, output_file, reflect_graph):
     #Creates a graph of numbered chromosomes
-    bins = [x * .01 for x in range(0,101)]
+    bins = [x * .02 for x in range(0,51)]
     #Next two lines for non dragen
     format2 = False
     if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
@@ -265,21 +273,25 @@ def one_graph_mode(input_files, output_file, reflect_graph):
         input_files = sorted(dict_input.keys(), key=dict_input.get)
     
     fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
-    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    fig.suptitle(output_file + ", X chr only, no depth filtering.", size='xx-large', fontweight='heavy')
     number = 0
 
     for i in input_files:
-        AF = create_list(i, reflect_graph, 'chr'+str(1))
+        #TODO Remove comments
+        #AF = create_list(i, reflect_graph, 'chr'+str(1))
         #Add all graphs for all chromosomes together
-        for chr_n in range(2,23):
-            AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
+        #for chr_n in range(2,23):
+        #    AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
+        AF = create_list(i, False, chr_numbered=True)
+        
+        print(str(i.split("/")[-1].split(".")[0]) + ", " + str(len([x for x in AF if x > 0.5])))
 
             
-        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
-        j = i.find("T")
+    #   axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        j = i.find("_T")
         if format2:
-            j = i.find("T")
-            axs[number].set_title(i[j+1:j+3])
+            j = i.find("_T")
+            #axs[number].set_title(i[j+1:j+3])
             t = i[j+1:j+3]
             s_i = i.find("_00")
             s = i[s_i+1:s_i+5]
@@ -291,17 +303,93 @@ def one_graph_mode(input_files, output_file, reflect_graph):
             j = i.find(".hard-filtered")
             t = i[j-2:j]
             s = i[j-4:j-2]
-            axs[number].set_title(t)
+            #axs[number].set_title(t)
 
-        print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
-        axs[number].set_xlabel("AF")
-        axs[number].set_xticks(bins)
-        axs[number].tick_params(labelrotation=70)
+        #axs[number].set_xlabel("AF")
+        #axs[number].set_xticks(bins)
+        #axs[number].tick_params(labelrotation=70)
         
         number += 1
 
     plt.subplots_adjust(hspace=.2)
-    plt.savefig("graphs/"+output_file+".pdf")
+    #plt.savefig("graphs/"+output_file+".pdf")
+
+def tcratio_graph_chr_mode(input_files, output_file, reflect_graph):
+    #Creates a graph of numbered chromosomes
+    #Next two lines for non dragen
+    format2 = False
+    output_file = output_file.split('/')[-1]
+    print(output_file)
+    if input_files[0].find("KUNUSCCLH") != -1: #If non dragen, use non dragen format
+        format2 = True
+    if format2:  #Determine using non-dragen format
+        dict_input = {x:x[x.find("_T")+2] for x in input_files}
+
+        input_files = sorted(dict_input.keys(), key=dict_input.get)
+    
+
+    for i in input_files:
+        plt.tight_layout()
+        fig, axs = plt.subplots(23,figsize=(20,100), sharex=True, sharey=True)
+        fig.suptitle(output_file + ", Ratio of Tumor depth/Normal depth vs Position, Numbered Chromosomes Only", size='xx-large', fontweight='heavy')
+        number = 0
+        for n in range(1, 23):
+            tcratio_obj = create_tcratio_list(i, chr_n = 'chr{0}'.format(n), chr_numbered=False)
+            with open('totals.csv', newline='') as csvfile:
+                reader = csv.reader(csvfile)
+                totals = {}
+                for row in reader:
+                    totals[row[0]] = row[1]
+            print(i.split('/')[-1])
+            directory = "/media/go/wgsAnalysis/KgpOut_Echo/KUNUSCCLH_00{code}/analysis/".format(code=i.split('/')[-1][12:14])
+            for FILE in os.listdir(directory):
+                original = i.split('/')[-1].split('.')[0]
+                if FILE.find(original)!= -1:
+                    one = True
+                    for match in re.finditer("LibTube.*?_", FILE):
+                        if one:
+                            NORMAL = FILE[match.start():match.end()-1]
+                        else:
+                            TUMOR = FILE[match.start():match.end()-1]
+                        one = False
+            NORMAL = float(totals[NORMAL])
+            TUMOR = float(totals[TUMOR])
+
+            normalization = NORMAL / TUMOR 
+            print(str(normalization))
+            
+            tcratio = tcratio_obj[0]
+            pos = tcratio_obj[1]
+
+            tcratio = [ thing * normalization for thing in tcratio ]
+                
+            axs[number].scatter(pos, tcratio)
+            j = i.find("_T")
+            if format2:
+                j = i.find("_T")
+                axs[number].set_title(i[j+1:j+3] + "Chromosome {chr_n}".format(chr_n = str(n)))
+                t = i[j+1:j+3]
+                s_i = i.find("_00")
+                s = i[s_i+1:s_i+5]
+            else:
+                #j = i.find("PASS")
+                #axs[number].set_title(i[j-14:j-12])
+                #t = i[j-14:j-12]
+                #s = i[j-16:j-14]
+                j = i.find(".hard-filtered")
+                t = i[j-2:j]
+                s = i[j-4:j-2]
+                axs[number].set_title(t + "Chromosome {chr_n}".format(chr_n=str(n)))
+
+            #print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
+            axs[number].set_xlabel("Position")
+            axs[number].set_ylabel("T1/C1")
+            
+            number += 1
+
+        plt.subplots_adjust(hspace=.2)
+        plt.yscale('log')
+        plt.savefig("graphs/"+i.split('/')[-1]+"freebayes_filtered.png")
 
 
 def tcratio_graph_mode(input_files, output_file, reflect_graph):
@@ -316,20 +404,43 @@ def tcratio_graph_mode(input_files, output_file, reflect_graph):
         input_files = sorted(dict_input.keys(), key=dict_input.get)
     
     fig, axs = plt.subplots(len(input_files),figsize=(20,18), sharex=True, sharey=True)
-    fig.suptitle(output_file, size='xx-large', fontweight='heavy')
+    fig.suptitle(output_file + ", Ratio of Tumor depth/Normal depth vs Position, Numbered Chromosomes Only", size='xx-large', fontweight='heavy')
     number = 0
 
     for i in input_files:
         tcratio_obj = create_tcratio_list(i, chr_numbered=False)
+        with open('totals.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile)
+            totals = {}
+            for row in reader:
+                totals[row[0]] = row[1]
+        print(i.split('/')[-1])
+        directory = "/media/go/wgsAnalysis/KgpOut_Echo/KUNUSCCLH_00{code}/analysis/".format(code=i.split('/')[-1][12:14])
+        for FILE in os.listdir(directory):
+            original = i.split('/')[-1].split('.')[0]
+            if FILE.find(original)!= -1:
+                one = True
+                for match in re.finditer("LibTube.*?_", FILE):
+                    if one:
+                        NORMAL = FILE[match.start():match.end()-1]
+                    else:
+                        TUMOR = FILE[match.start():match.end()-1]
+                    one = False
+        NORMAL = float(totals[NORMAL])
+        TUMOR = float(totals[TUMOR])
+
+        normalization = NORMAL / TUMOR 
+        print(str(normalization))
+        
         tcratio = tcratio_obj[0]
         pos = tcratio_obj[1]
 
+        tcratio = [ thing * normalization for thing in tcratio ]
             
-        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
-        axs[number].scatter(tcratio, pos)
-        j = i.find("T")
+        axs[number].scatter(pos, tcratio)
+        j = i.find("_T")
         if format2:
-            j = i.find("T")
+            j = i.find("_T")
             axs[number].set_title(i[j+1:j+3])
             t = i[j+1:j+3]
             s_i = i.find("_00")
@@ -344,15 +455,15 @@ def tcratio_graph_mode(input_files, output_file, reflect_graph):
             s = i[j-4:j-2]
             axs[number].set_title(t)
 
-        print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
-        axs[number].set_xlabel("AF")
-        axs[number].set_xticks(bins)
-        axs[number].tick_params(labelrotation=70)
+        #print(s+t + "\t" + str(median(create_list(i, reflect_graph, chr_numbered=True)))) 
+        axs[number].set_xlabel("Position")
+        axs[number].set_ylabel("T1/C1")
         
         number += 1
 
     plt.subplots_adjust(hspace=.2)
-    plt.savefig("graphs/"+output_file+"freebayes_filtered.pdf")
+    plt.yscale('log')
+    plt.savefig("graphs/"+output_file+"freebayes_filtered.png")
 
 def alternate_graph_mode(input_files, output_file):
     reflect_graph = False
@@ -425,7 +536,7 @@ def alternate_graph_mode(input_files, output_file):
 
     plt.subplots_adjust(hspace=.2)
     plt.tight_layout()
-    plt.savefig("graphs/"+output_file+".pdf")
+    plt.savefig("graphs/"+output_file+".png")
     plt.close()
 
 
@@ -439,16 +550,21 @@ def create_by_pos(input_file, chr_n):
         data['pos'] = chrx['Start_Position']
         return data
     except:
+        print("ISSUE")
         return {}
         
 
 def AF_by_pos(input_file, output_file):
-    chrs = list(range(1,23)) + ['X','Y']
+    #TODO
+    #chrs = list(range(1,23)) + ['X','Y']
+    chrs = ['X']
+
     data = {}
-    fig, axs =plt.subplots(24, figsize=(20,200), sharey=True)
+    fig, axs =plt.subplots(2, figsize=(20,200), sharey=True)
     fig.suptitle(output_file, size='xx-large', fontweight='heavy')
     number = 0
     for i in chrs:
+        print("Creating graph for" + input_file)
         AF = create_list(input_file, False, 'chr'+str(i))
         data = create_by_pos(input_file, 'chr'+str(i))
         if data:
@@ -457,7 +573,7 @@ def AF_by_pos(input_file, output_file):
             axs[number].set_xlabel("Start Position")
             axs[number].set_ylabel("AF")
             number += 1
-    plt.savefig("graphs/"+output_file+".pdf")
+    plt.savefig("graphs/"+output_file+".png")
 
 
     
@@ -526,7 +642,7 @@ if __name__ == '__main__':
         AF_by_pos(input_file, output_file)
         exit()
     if freebayes_exp:
-        tcratio_graph_mode(bulk_graph, output_file, False)
+        tcratio_graph_chr_mode(bulk_graph, output_file, False)
         exit()
     if alt_graph:
         print("Alternate experiment")
