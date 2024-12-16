@@ -9,7 +9,7 @@ do
 		FILES="${FILES} ${FILE}"
 	done
 	FILENAME="${i}_indels"
-	python3 pysam_filter.py --bulk_graph $FILES -o $FILENAME --reflect_graph
+	python3 pysam_filter.py --bulk_graph $FILES -o $FILENAME --one_graph
 done
 
 for i in {01..30}
@@ -20,5 +20,5 @@ do
 		FILES="${FILES} ${FILE}"
 	done
 	FILENAME="${i}_snvs"
-	python3 pysam_filter.py --bulk_graph $FILES -o $FILENAME --reflect_graph
+	python3 pysam_filter.py --bulk_graph $FILES -o $FILENAME --one_graph
 done
