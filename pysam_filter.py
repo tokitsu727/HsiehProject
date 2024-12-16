@@ -150,8 +150,8 @@ def compute_bins(data, bin_size):
     return bins
 
 def calculate_af(t_alt, t_depth, reflect_graph):
-    if t_alt <= 15 or t_depth <= 15:
-        return 0 
+    #if t_alt < 15 or t_depth < 15:
+    #    return 0 
     if not reflect_graph:
         return t_alt/t_depth
     AF = t_alt/t_depth
@@ -278,41 +278,40 @@ def one_graph_mode(input_files, output_file, reflect_graph):
 
     for i in input_files:
         #TODO Remove comments
-        #AF = create_list(i, reflect_graph, 'chr'+str(1))
+        AF = create_list(i, reflect_graph, 'chr'+str(1))
         #Add all graphs for all chromosomes together
-        #for chr_n in range(2,23):
-        #    AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
-        AF = create_list(i, False, chr_numbered=True)
+        for chr_n in range(2,23):
+            AF.extend(create_list(i, reflect_graph, 'chr'+str(chr_n)))
         
         print(str(i.split("/")[-1].split(".")[0]) + ", " + str(len([x for x in AF if x > 0.5])))
 
             
-    #   axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
+        axs[number].hist(AF, bins=bins, edgecolor="white", zorder=2)
         j = i.find("_T")
         if format2:
             j = i.find("_T")
-            #axs[number].set_title(i[j+1:j+3])
+            axs[number].set_title(i[j+1:j+3])
             t = i[j+1:j+3]
             s_i = i.find("_00")
             s = i[s_i+1:s_i+5]
         else:
-            #j = i.find("PASS")
-            #axs[number].set_title(i[j-14:j-12])
-            #t = i[j-14:j-12]
-            #s = i[j-16:j-14]
+            j = i.find("PASS")
+            axs[number].set_title(i[j-14:j-12])
+            t = i[j-14:j-12]
+            s = i[j-16:j-14]
             j = i.find(".hard-filtered")
             t = i[j-2:j]
             s = i[j-4:j-2]
-            #axs[number].set_title(t)
+            axs[number].set_title(t)
 
-        #axs[number].set_xlabel("AF")
-        #axs[number].set_xticks(bins)
-        #axs[number].tick_params(labelrotation=70)
+        axs[number].set_xlabel("AF")
+        axs[number].set_xticks(bins)
+        axs[number].tick_params(labelrotation=70)
         
         number += 1
 
     plt.subplots_adjust(hspace=.2)
-    #plt.savefig("graphs/"+output_file+".pdf")
+    plt.savefig("graphs/"+output_file+".pdf")
 
 def tcratio_graph_chr_mode(input_files, output_file, reflect_graph):
     #Creates a graph of numbered chromosomes
